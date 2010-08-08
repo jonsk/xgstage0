@@ -4,7 +4,7 @@
 . functions_pub
 
 #download all packages.
-get_packages  ${SCRIPTS_BASE}/scripts_ctools
+get_packages  ${SCRIPTS_BASE}/scripts_tools
 allpacks=$ret
 unset ret
 

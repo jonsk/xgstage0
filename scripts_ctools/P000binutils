@@ -1,0 +1,58 @@
+#!/bin/bash
+
+. functions_pub
+
+PackageName=binutils-2.19.1
+PackageURL=http://ftp.gnu.org/gnu/binutils/binutils-2.19.1.tar.bz2
+#PackageURL=http://nmap.org/dist/nmap-4.90RC1.tar.bz2
+#PackageURL=http://internap.dl.sourceforge.net/sourceforge/netcat/netcat-0.7.1.tar.bz2
+
+
+case "${1}" in
+download)
+	#download package from URL.
+	check_and_download $PackageURL
+	;;
+build)
+	#step0: unpack.
+	unpack_and_enter $PackageName $PackageURL
+	cd /mnt/xgstage0/tmp/xgstage0/binutils-2.19.1
+	patch -Np1 -i $LFS_SOURCE/binutils-2.19.1-loongson2f-1.patch
+
+	#step1: configure.
+	mkdir -p ../build
+	err_check "[Error] Binutils: Create build directory failed."
+
+	cd ../build
+	err_check "[Error] Binutils: enter build directory failed."
+
+        export CC="ccache /usr/bin/gcc"
+        export CPP="ccache /usr/bin/cpp"
+        export CXX="ccache /usr/bin/g++"
+
+	AR="/usr/bin/ar" AS="/usr/bin/as" CC="/usr/bin/gcc -B/usr/bin" \
+		 ../$PackageName/configure --prefix=/tools \
+		 --with-lib-path=/tools/lib --disable-nls --enable-shared \
+		 --enable-64-bit-bfd --disable-multili
+	err_check "[Error] configure failed."
+
+	#step4: make.
+	make configure-host
+	make
+	err_check "[Error] make failed."
+	
+	#step5: install
+	make install
+	cp -v ../binutils-2.19.1/include/libiberty.h /tools/include
+	err_check "[Error] install failed."
+
+	#leave.
+	package_leave $PackageName $PackageURL
+	;;
+*)
+	exit 1
+	;;
+esac
+
+#end 
+

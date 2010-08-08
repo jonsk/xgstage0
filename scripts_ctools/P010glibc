@@ -1,0 +1,78 @@
+#!/bin/bash
+
+. functions_pub
+
+PackageName=glibc-2.10.1
+PackageURL=http://ftp.gnu.org/gnu/glibc/glibc-2.11.2.tar.gz
+
+#eglibc_PackageName=eglibc-2.10.1
+#eglibc_PackageURL=http://www.lemote.com/upfiles/eglibc-2.10.1.tar.bz2
+
+eglibc_ports_PackageName=eglibc-ports-2.10.1
+eglibc_ports_PackageURL=http://zdbr.net.cn/download/eglibc-ports-2.10.1.tar.bz2
+
+
+fullname=`basename $PackageURL`
+
+
+case "${1}" in
+download)
+	check_and_download $eglibc_PackageURL $eglibc_ports_PackageURL
+	;;
+build)
+	#step0: unpack.
+#        tar xjpf $LFS_SOURCE/glibc-2.10.1.tar.bz2 -C $LFS_TEMP
+#	tar xjpf $LFS_SOURCE/eglibc-ports-2.10.1.tar.bz2 -C $LFS_TEMP/$PackageName
+#	cd  $LFS_TEMP/$eglibc_PackageName
+#	sed -i -e 's/-lgcc_eh//g' Makeconfig
+#	cd ..
+#	mkdir -p $LFS_TEMP/build
+	cd $LFS_TEMP/build
+	
+	export CC="ccache /usr/bin/gcc"
+	export CPP="ccache /usr/bin/cpp"
+	export CXX="ccache /usr/bin/g++"
+
+#cat > config.cache << "EOF"
+#         libc_cv_forced_unwind=yes
+#         libc_cv_c_cleanup=yes
+#         libc_cv_gnu89_inline=yes
+#EOF
+	err_check "[Error] glibc: create build directory failed."
+
+	export PATH="/mnt/xgstage0/tools/bin:/bin:/sbin:/usr/bin:/usr/sbin"
+#	../$PackageName/configure --prefix=/tools \
+#		--disable-profile --enable-add-ons --enable-kernel=`uname -r` --with-tls \
+#		--with-__thread --without-gd --without-selinux \
+#		--cache-file=config.cache
+	#	--disable-profile --enable-add-ons \
+	#	--enable-kernel=2.6.0 --with-binutils=/tools/bin \
+	#	--with-headers=/tools/include \
+   	#	--with-tls --with-__thread \
+	
+	#	--disable-profile --enable-add-ons --enable-kernel=`uname -r` --with-tls \
+	#	--with-__thread --without-gd --without-selinux
+
+	err_check "[Error] configure failed."
+
+	#step4: make.
+	make
+	err_check "[Error] make failed."	
+
+	#step5: install.
+	mkdir -v /tools/etc
+	touch /tools/etc/ld.so.conf
+	make install
+	err_check "[Error] install glibc failed."
+
+	#leave.
+        package_leave $PackageName $PackageURL
+	;;
+
+*)
+	exit 1
+	;;
+esac
+
+#end 
+

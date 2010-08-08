@@ -2,47 +2,50 @@
 
 . functions_pub
 
-PackageName=binutils-2.20
-PackageURL=http://ftp.gnu.org/pub/gnu/binutils/binutils-2.20.tar.bz2
-PatchURL="http://patches.cross-lfs.org/dev/binutils-2.20-branch_update-1.patch"
-
+PackageName=binutils-2.19.1
+PackageURL=http://ftp.gnu.org/gnu/binutils/binutils-2.19.1.tar.bz2
 
 case "${1}" in
 download)
+	#download package from URL.
 	check_and_download $PackageURL
-	check_and_download $PatchURL
 	;;
 build)
 	#step0: unpack.
-        unpack_and_enter $PackageName $PackageURL
-	patch -Np1 -i $LFS_SOURCE/binutils-2.20-branch_update-1.patch
-	err_check "[Error] patch $PackageName failed."
+        unpack_and_enter $PackageName $PackageURL -pass2
 
-	mkdir -v ../binutils-build
-	cd ../binutils-build
-	err_check "[Error] enter $PackageName failed."
+	#step3: configure.
+	mkdir -p $LFS_TEMP/build
+	cd $LFS_TEMP/build
+	err_check "enter directory $LFS_TEMP/build failed"
 
-	#configure	
-	AR=ar AS=as ../$PackageName/configure \
-	--prefix=/cross-tools --host=${CLFS_BUILD} --target=${CLFS_TARGET} \
-	--with-sysroot=${LFS} --with-lib-path=/tools/lib --disable-nls --enable-shared \
-	--disable-multilib
-	err_check "[Error] configure $PackageName failed."
+	../$PackageName/configure --prefix=/tools \
+		--disable-nls --with-lib-path=/tools/lib
+	err_check "[Error] configure failed."
 
 	#step4: make.
-	make configure-host
 	make
-	err_check "[Error] make $PackageName failed."	
+	err_check "[Error] make failed."
 
-	#step5: install.
+	make check
+	
+	#step5: install
 	make install
-	cp -v ../$PackageName/include/libiberty.h /tools/include
-	err_check "[Error] install $PackageName failed."
+	err_check "[Error] install failed."
 
-	#leave directory.
-	package_leave $PackageName $PackageURL
+
+	#step6: adjust tool chain.
+	make -C ld clean
+	make -C ld LIB_PATH=/usr/lib:/lib
+	err_check "[Error]" 
+
+	cp -v ld/ld-new /tools/bin	
+	err_check "[Error]" 
+
+	#leave.
+        package_leave $PackageName $PackageURL -pass2
+
 	;;
-
 *)
 	exit 1
 	;;

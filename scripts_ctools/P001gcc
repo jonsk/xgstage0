@@ -1,0 +1,90 @@
+#!/bin/bash
+
+. functions_pub
+
+PackageName=gcc-4.3.2
+PackageURL=http://ftp.gnu.org/gnu/gcc/$PackageName/$PackageName.tar.bz2
+
+GMP_PACKNAME=gmp-4.3.2
+GMP_URL=ftp://ftp.gnu.org/gnu/gmp/$GMP_PACKNAME.tar.bz2
+
+MPFR_PACKNAME=mpfr-2.4.2
+MPFR_URL=http://www.mpfr.org/$MPFR_PACKNAME/$MPFR_PACKNAME.tar.bz2
+
+MPFR_PACKNAME_PATCH=mpfr-2.4.1
+MPFR_PATCH_URL=mpfr-2.4.1-mips_gcc4.4-1.patch
+
+
+case "${1}" in
+download)
+	check_and_download $PackageURL
+	check_and_download $GMP_URL
+	check_and_download $MPFR_URL
+	;;
+build)
+	 #step0: unpack.
+        unpack_and_enter $PackageName $PackageURL
+	
+	#unpack GMP.
+	tar xf $LFS_SOURCE/`basename $GMP_URL`
+	mv {$GMP_PACKNAME,gmp}
+	err_check "[Error] unpack gmp failed."
+	
+	#unpack MPFR
+	tar xf $LFS_SOURCE/`basename $MPFR_URL`
+	mv {$MPFR_PACKNAME,mpfr}
+	cd mpfr
+	patch -Np1 -i $LFS_SOURCE/mpfr-2.4.1-mips_gcc4.4-1.patch
+	cd ..
+	err_check "[Error] unpack mpfr failed."
+
+        #step1: configure.
+        mkdir -p ../build
+        err_check "[Error] Binutils: Create build directory failed."
+
+        cd ../build
+#	cd /mnt/xgstage0/tmp/xgstage0/build
+        err_check "[Error] Binutils: enter build directory failed."
+	
+	export CC="ccache /usr/bin/gcc"
+	export CPP="ccache /usr/bin/cpp"
+	export CXX="ccache /usr/bin/g++"
+
+	#configure.
+	CC="/usr/bin/gcc -B/usr/bin" ../gcc-4.3.2/configure \
+		 --prefix=/tools \
+		 --with-local-prefix=/tools --disable-nls \
+		 --disable-shared --without-headers --with-newlib --disable-decimal-float\
+		 --disable-threads --enable-languages=c \
+		 --disable-multilib --disable-libmudflap \
+		 --disable-bootstrap --disable-libgomp  --disable-libssp 
+
+	err_check "[Error] configure failed."
+
+        #step4: make.
+	make all-gcc
+	make all-target-libgcc
+
+        err_check "[Error] make failed."
+
+        #step5: install
+	make install-gcc
+	make install-target-libgcc
+
+        err_check "[Error] install failed."
+
+
+	#adjust.
+	ln -vs gcc /tools/bin/cc
+        err_check "[Error] gcc: create symbal link cc failed."
+
+	package_leave $PackageName $PackageURL
+	;;
+
+*)
+	exit 1
+	;;
+esac
+
+#end 
+
